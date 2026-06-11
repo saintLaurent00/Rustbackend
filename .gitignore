@@ -1,0 +1,16 @@
+# Binaires
+*/gateway-auth
+*/metadata-semantic
+
+# Go dependencies
+**/vendor/
+**/go.sum
+
+# Rust build artifacts
+**/target/
+
+# Environment files
+.env
+
+# Cache
+**/bi_cache/

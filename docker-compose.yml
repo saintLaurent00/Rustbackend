@@ -1,0 +1,77 @@
+version: '3.8'
+
+services:
+  valkey:
+    image: valkey/valkey:7.2
+    container_name: bi_valkey_broker
+    ports:
+      - "6379:6379"
+    volumes:
+      - valkey_data:/data
+
+  postgres_meta:
+    image: postgres:16-alpine
+    container_name: bi_postgres_metadata
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: bi_metadata
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  maildev:
+    image: maildev/maildev
+    container_name: bi_maildev
+    ports:
+      - "1080:1080"
+      - "1025:1025"
+
+  gateway-auth:
+    build: ./gateway-auth-go
+    container_name: bi_gateway_auth
+    ports:
+      - "8080:8080"
+    env_file: .env
+    depends_on:
+      - valkey
+      - postgres_meta
+
+  metadata-semantic:
+    build: ./metadata-semantic-go
+    container_name: bi_metadata_semantic
+    ports:
+      - "8081:8081"
+    env_file: .env
+    depends_on:
+      - postgres_meta
+
+  query-engine:
+    build: ./query-engine-rust
+    container_name: bi_query_engine_worker
+    env_file: .env
+    volumes:
+      - cache_data:/var/lib/bi_cache
+    depends_on:
+      - valkey
+
+  render-worker:
+    build: ./render-worker
+    container_name: bi_render_worker
+    env_file: .env
+    depends_on:
+      - valkey
+
+  orchestrator-sync:
+    build: ./orchestrator-sync-rust
+    container_name: bi_orchestrator_sync
+    env_file: .env
+    depends_on:
+      - valkey
+      - maildev
+
+volumes:
+  valkey_data:
+  postgres_data:
+  cache_data:
